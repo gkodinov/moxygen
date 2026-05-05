@@ -211,6 +211,43 @@ describe('helpers', () => {
 
       expect(resolved).toContain('[Widget](demo-Widget.html#widget-1)');
     });
+
+    it('routes grouped namespace refs to the owning group page', () => {
+      const uvGroup = makeGroupedCompound(null, 'group__uv', 'uv', 'group', 'uv');
+      const uvNamespace = makeGroupedCompound(
+        uvGroup,
+        'namespaceicy_1_1uv',
+        'icy::uv',
+        'namespace',
+        'uv',
+      );
+
+      const references: References = {
+        [uvGroup.refid]: uvGroup,
+        [uvNamespace.refid]: uvNamespace,
+      };
+      const anchorMap = buildCleanAnchorMap([uvGroup, uvNamespace]);
+      const slugMap = new Map<string, string>([
+        [uvGroup.refid, 'uv'],
+        [uvNamespace.refid, 'icy-uv'],
+      ]);
+      const pagePathMap = new Map<string, string>([
+        [uvNamespace.refid, 'uv.html'],
+      ]);
+      const content = 'Namespace [uv]({#ref namespaceicy_1_1uv #})';
+
+      const resolved = resolveRefs(
+        content,
+        uvGroup,
+        references,
+        makeOptions('/tmp/docs/api/%s.md'),
+        anchorMap,
+        slugMap,
+        pagePathMap,
+      );
+
+      expect(resolved).toContain('[uv](#uv-1)');
+    });
   });
 
   describe('compoundPath', () => {

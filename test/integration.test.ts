@@ -133,7 +133,7 @@ describe('integration', () => {
     expect(classContent).toContain('Returns a stable value.');
   });
 
-  it('renders grouped overview links differently for markdown mirrors and generated pages', async () => {
+  it('renders grouped overview links as same-page anchors', async () => {
     const outputDir = join(outputRoot, 'file-grouped-links');
 
     await run({
@@ -158,7 +158,7 @@ describe('integration', () => {
 
     const groupPage = pages.find((page) => page.kind === 'group' && page.slug === 'widget');
     expect(groupPage).toBeDefined();
-    expect(groupPage!.markdown).toContain('| [`demo`](demo.html#demo) |');
+    expect(groupPage!.markdown).toContain('| [`demo`](#demo) |');
   });
 
   it('keeps root-level classes from shared namespaces on grouped module pages', async () => {

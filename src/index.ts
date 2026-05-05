@@ -543,6 +543,7 @@ export async function generate(
   for (const c of allCompounds) {
     slugMap.set(c.refid, slugify(c.name));
   }
+  const pagePathMap = useGroups ? buildGroupedNamespacePagePathMap(groups) : undefined;
 
   // Second pass: render (dedup by refid)
   const seen = new Set<string>();
@@ -554,7 +555,7 @@ export async function generate(
 
     const md = templates.render(compound);
     if (!md) return;
-    const meta = extractResolvedMeta(compound, references, opts, anchorMap, slugMap);
+    const meta = extractResolvedMeta(compound, references, opts, anchorMap, slugMap, pagePathMap);
     if (moduleName) meta.module = moduleName;
 
     if (compound.kind === 'group') {
@@ -562,10 +563,10 @@ export async function generate(
         ...meta,
         title: compound.shortname || compound.name,
         module: compound.name,
-        markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap),
+        markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap),
       });
     } else {
-      pages.push({ ...meta, markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap) });
+      pages.push({ ...meta, markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap) });
     }
   }
 
@@ -641,6 +642,21 @@ export async function generate(
 function lastSegment(ns: string): string {
   const parts = ns.split('::');
   return parts[parts.length - 1] || ns;
+}
+
+function buildGroupedNamespacePagePathMap(groups: Compound[]): PagePathMap {
+  const map: PagePathMap = new Map();
+
+  for (const group of groups) {
+    const groupPath = `${slugify(group.name)}.html`;
+    const namespaces = toArray(group, 'compounds', 'namespace') as Compound[];
+    for (const namespace of namespaces) {
+      if (isJunkCompound(namespace)) continue;
+      map.set(namespace.refid, groupPath);
+    }
+  }
+
+  return map;
 }
 
 // ---------------------------------------------------------------------------
