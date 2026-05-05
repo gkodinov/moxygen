@@ -1,10 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { refLink, link, escape } from '../src/markdown.js';
+import { refLink, link, safeLink, escape } from '../src/markdown.js';
 
 describe('markdown', () => {
   describe('link', () => {
     it('creates a markdown link', () => {
       expect(link('text', 'http://example.com')).toBe('[text](http://example.com)');
+    });
+  });
+
+  describe('safeLink', () => {
+    it('keeps normal links', () => {
+      expect(safeLink('text', 'https://example.com')).toBe('[text](https://example.com)');
+      expect(safeLink('guide', '../guide')).toBe('[guide](../guide)');
+      expect(safeLink('anchor', '#section')).toBe('[anchor](#section)');
+    });
+
+    it('drops pseudo-URLs emitted for C++ qualified names', () => {
+      expect(safeLink('http::Request', 'http::Request')).toBe('http::Request');
     });
   });
 

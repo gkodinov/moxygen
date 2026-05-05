@@ -203,7 +203,7 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       s += '\n';
       break;
     case 'ulink':
-      s = md.link(s, el.$?.url ?? '');
+      s = md.safeLink(s, el.$?.url ?? '');
       break;
     case 'orderedlist':
       context.pop();

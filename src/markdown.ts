@@ -6,6 +6,25 @@ export function link(text: string, href: string): string {
   return `[${text}](${href})`;
 }
 
+export function safeLink(text: string, href: string): string {
+  const normalized = href.trim();
+  return isSafeHref(normalized) ? link(text, normalized) : text;
+}
+
+export function isSafeHref(href: string): boolean {
+  if (!href) return false;
+  if (href.startsWith('#') || href.startsWith('/') || href.startsWith('./') || href.startsWith('../')) {
+    return true;
+  }
+  if (/^(?:https?|ftp):\/\//i.test(href) || /^mailto:/i.test(href)) {
+    return true;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    return false;
+  }
+  return true;
+}
+
 export const escape = {
   row(text: string): string {
     return text.replace(/\s*\|\s*$/, '');
