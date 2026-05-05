@@ -654,6 +654,12 @@ function buildGroupedNamespacePagePathMap(groups: Compound[]): PagePathMap {
       if (isJunkCompound(namespace)) continue;
       map.set(namespace.refid, groupPath);
     }
+
+    for (const refid of (group.fileScopedNamespaceRefs as string[] | undefined) ?? []) {
+      if (!map.has(refid)) {
+        map.set(refid, groupPath);
+      }
+    }
   }
 
   return map;
