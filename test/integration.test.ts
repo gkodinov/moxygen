@@ -262,6 +262,20 @@ describe('integration', () => {
     expect(content).toContain('RacingBike');
   });
 
+  it('writes frontmatter for single file output', async () => {
+    const singleOutput = join(outputRoot, 'single-api-frontmatter.md');
+
+    await run({
+      directory: exampleXmlDir,
+      output: singleOutput,
+      quiet: true,
+      frontmatter: true,
+    });
+
+    const content = read(singleOutput);
+    expect(content).toMatch(/^---\ntitle: "API Reference"\nkind: index\n---\n# API Reference/);
+  });
+
   it('does not duplicate Doxygen section titles into the section body', async () => {
     const outputDir = join(outputRoot, 'title-duplication');
 
