@@ -189,6 +189,7 @@ const SECTION_LABELS: Record<string, string> = {
   'public-static-attrib': 'Public Static Attributes',
   'protected-attrib': 'Protected Attributes',
   'private-attrib': 'Private Attributes',
+  'private-static-attrib': 'Private Static Attributes',
   'signal': 'Signals',
   'public-slot': 'Public Slots',
   'protected-slot': 'Protected Slots',

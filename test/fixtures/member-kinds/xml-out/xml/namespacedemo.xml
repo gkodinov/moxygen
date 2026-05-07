@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="namespacedemo" kind="namespace" language="C++">
+    <compoundname>demo</compoundname>
+    <innerclass refid="classdemo_1_1Utility" prot="public">demo::Utility</innerclass>
+    <innerclass refid="uniondemo_1_1Value" prot="public">demo::Value</innerclass>
+    <briefdescription>
+      <para>Namespace used to verify member kind rendering.</para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/member_kinds.h" line="1" column="1"/>
+  </compounddef>
+</doxygen>

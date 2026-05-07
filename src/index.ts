@@ -33,6 +33,7 @@ export const defaultFilters: Filters = {
     'private-attrib',
     'private-func',
     'private-slot',
+    'private-static-attrib',
     'private-static-func',
   ],
   compounds: [

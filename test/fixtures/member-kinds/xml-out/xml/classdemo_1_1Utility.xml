@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="classdemo_1_1Utility" kind="class" language="C++" prot="public">
+    <compoundname>demo::Utility</compoundname>
+    <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classdemo_1_1Utility_1create" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>Utility</type>
+        <definition>Utility demo::Utility::create</definition>
+        <argsstring>()</argsstring>
+        <name>create</name>
+        <qualifiedname>demo::Utility::create</qualifiedname>
+        <briefdescription>
+          <para>Creates a utility instance.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="8" column="18"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="private-func">
+      <memberdef kind="function" id="classdemo_1_1Utility_1hidden" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void demo::Utility::hidden</definition>
+        <argsstring>()</argsstring>
+        <name>hidden</name>
+        <qualifiedname>demo::Utility::hidden</qualifiedname>
+        <briefdescription>
+          <para>Hidden helper method.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="11" column="8"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classdemo_1_1Utility_1secret" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int demo::Utility::secret</definition>
+        <name>secret</name>
+        <qualifiedname>demo::Utility::secret</qualifiedname>
+        <briefdescription>
+          <para>Private instance state.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="12" column="9"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="private-static-attrib">
+      <memberdef kind="variable" id="classdemo_1_1Utility_1globalSecret" prot="private" static="yes" mutable="no">
+        <type>int</type>
+        <definition>int demo::Utility::globalSecret</definition>
+        <name>globalSecret</name>
+        <qualifiedname>demo::Utility::globalSecret</qualifiedname>
+        <briefdescription>
+          <para>Private static state.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="13" column="14"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+      <para>Utility type with static and private members.</para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/member_kinds.h" line="5" column="1"/>
+  </compounddef>
+</doxygen>

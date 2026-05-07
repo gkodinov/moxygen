@@ -22,6 +22,12 @@ MARKDOWN_SUPPORT = YES
 
 `XML_PROGRAMLISTING` lets Doxygen include source listings in the XML. Moxygen renders those as fenced code blocks and uses the filename extension as the fence language when Doxygen provides one.
 
+If you want private members in the generated Markdown, Doxygen must emit them first:
+
+```ini
+EXTRACT_PRIVATE = YES
+```
+
 For grouped output, keep the XML directory and source tree relationship clear. If Doxygen emits sparse group XML for file-level `@addtogroup` or `@ingroup` comments, pass `--source-root` so Moxygen can inspect the source comments that Doxygen left out of the group compound XML.
 
 ```bash
@@ -141,6 +147,7 @@ This table starts from the comments users write. The XML column is included for 
 | Inline emphasis, bold, code | `emphasis`, `bold`, `computeroutput` | Markdown emphasis, bold, and inline code |
 | Formulas | `formula` | Inline math or fenced display math |
 | En dash, em dash, line breaks | `ndash`, `mdash`, `linebreak` | Markdown-safe HTML entity or line break |
+| Classes, structs, unions, interfaces | `compounddef kind="class"` / `struct` / `union` / `interface` | Type page with member sections |
 | Enums and enum values | `memberdef kind="enum"`, `enumvalue` | Enum signature and value table |
 | Groups | `compounddef kind="group"` | Group/module page when `--groups` is enabled |
 

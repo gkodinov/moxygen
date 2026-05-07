@@ -263,6 +263,7 @@ export function render(compound: Compound): string | undefined {
     }
     case 'class':
     case 'struct':
+    case 'union':
     case 'interface':
     case 'enum':
       templateName = 'class';

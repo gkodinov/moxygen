@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.9.8" xml:lang="en-US">
+  <compound refid="classdemo_1_1Utility" kind="class"><name>demo::Utility</name>
+    <member refid="classdemo_1_1Utility_1create" kind="function"><name>create</name></member>
+    <member refid="classdemo_1_1Utility_1hidden" kind="function"><name>hidden</name></member>
+    <member refid="classdemo_1_1Utility_1secret" kind="variable"><name>secret</name></member>
+    <member refid="classdemo_1_1Utility_1globalSecret" kind="variable"><name>globalSecret</name></member>
+  </compound>
+  <compound refid="uniondemo_1_1Value" kind="union"><name>demo::Value</name>
+    <member refid="uniondemo_1_1Value_1integer" kind="variable"><name>integer</name></member>
+  </compound>
+  <compound refid="namespacedemo" kind="namespace"><name>demo</name>
+  </compound>
+</doxygenindex>

@@ -13,6 +13,7 @@ const titleDuplicationXmlDir = join(import.meta.dirname, 'fixtures', 'title-dupl
 const ungroupedXmlDir = join(import.meta.dirname, 'fixtures', 'ungrouped', 'xml-out', 'xml');
 const programlistingLangXmlDir = join(import.meta.dirname, 'fixtures', 'programlisting-language', 'xml-out', 'xml');
 const missingTagsXmlDir = join(import.meta.dirname, 'fixtures', 'missing-tags', 'xml-out', 'xml');
+const memberKindsXmlDir = join(import.meta.dirname, 'fixtures', 'member-kinds', 'xml-out', 'xml');
 
 const exampleOutputDir = join(outputRoot, 'example');
 
@@ -311,5 +312,34 @@ describe('integration', () => {
     expect(content).toContain('* **Class**: Type-level documentation.');
     expect(content).toContain('* **Member**: Member-level documentation.');
     expect(content).toContain('##### Windows\nSupported on Windows 11.');
+  });
+
+  it('renders unions, static methods, and private members', async () => {
+    const outputDir = join(outputRoot, 'member-kinds');
+
+    await run({
+      directory: memberKindsXmlDir,
+      output: join(outputDir, '%s.md'),
+      classes: true,
+      anchors: true,
+      quiet: true,
+    });
+
+    const utility = read(join(outputDir, 'demo-Utility.md'));
+    expect(utility).toContain('### Public Static Methods');
+    expect(utility).toContain('| `Utility` | [`create`](#create) `static` | Creates a utility instance. |');
+    expect(utility).toContain('static Utility create()');
+    expect(utility).toContain('### Private Methods');
+    expect(utility).toContain('Hidden helper method.');
+    expect(utility).toContain('### Private Attributes');
+    expect(utility).toContain('Private instance state.');
+    expect(utility).toContain('### Private Static Attributes');
+    expect(utility).toContain('| `int` | [`globalSecret`](#globalsecret) `static` | Private static state. |');
+
+    const union = read(join(outputDir, 'demo-Value.md'));
+    expect(union).toContain('## Value');
+    expect(union).toContain('Union value representation.');
+    expect(union).toContain('### Public Attributes');
+    expect(union).toContain('Integer representation.');
   });
 });

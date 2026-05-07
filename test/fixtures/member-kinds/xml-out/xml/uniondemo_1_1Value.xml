@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="uniondemo_1_1Value" kind="union" language="C++" prot="public">
+    <compoundname>demo::Value</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="uniondemo_1_1Value_1integer" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int demo::Value::integer</definition>
+        <name>integer</name>
+        <qualifiedname>demo::Value::integer</qualifiedname>
+        <briefdescription>
+          <para>Integer representation.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="18" column="7"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+      <para>Union value representation.</para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/member_kinds.h" line="17" column="1"/>
+  </compounddef>
+</doxygen>
