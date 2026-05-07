@@ -12,7 +12,7 @@
     }
   },
   "bin": {
-    "moxygen": "./dist/cli.js"
+    "moxygen": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -30,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sourcey/moxygen.git"
+    "url": "git+https://github.com/sourcey/moxygen.git"
   },
   "keywords": [
     "doxygen",
