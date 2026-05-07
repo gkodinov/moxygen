@@ -21,7 +21,7 @@ export default defineConfig({
         groups: [
           {
             group: "Getting Started",
-            pages: ["introduction", "quickstart"],
+            pages: ["introduction", "quickstart", "writing-doxygen"],
           },
           {
             group: "Usage",

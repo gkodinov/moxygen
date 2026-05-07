@@ -28,3 +28,5 @@ For multi-file grouped output:
 ```bash
 moxygen --anchors --groups --output api-%s.md /path/to/doxygen/xml
 ```
+
+Next, see [Writing Doxygen](./writing-doxygen) for the comment patterns and `Doxyfile` settings that produce the cleanest output.
