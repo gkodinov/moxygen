@@ -32,6 +32,7 @@
     "type": "git",
     "url": "git+https://github.com/sourcey/moxygen.git"
   },
+  "homepage": "https://0state.com/moxygen",
   "keywords": [
     "doxygen",
     "markdown",
