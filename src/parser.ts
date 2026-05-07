@@ -19,6 +19,16 @@ let parserOptions: MoxygenOptions;
 const references: References = {};
 let root: Compound;
 
+function currentContextName(context: XmlElement[]): string | undefined {
+  return context[context.length - 1]?.['#name'];
+}
+
+function headingLevel(context: XmlElement[]): number {
+  const parent = context[context.length - 1];
+  const match = parent?.['#name']?.match(/^sect([1-6])$/);
+  return match ? Math.min(Number(match[1]) + 1, 6) : 2;
+}
+
 /**
  * Convert a Doxygen XML element tree to Markdown.
  */
@@ -68,16 +78,32 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       s = `\n\`\`\`${lang}\n`;
       break;
     }
+    case 'verbatim':
+      s = '\n```\n';
+      break;
     case 'orderedlist':
       context.push(el);
       s = '\n\n';
       break;
     case 'itemizedlist':
+      context.push(el);
       s = '\n\n';
       break;
+    case 'variablelist':
+      context.push(el);
+      s = '\n\n';
+      break;
+    case 'varlistentry':
+      s = '\n* ';
+      break;
+    case 'term':
+      s = '**';
+      break;
     case 'listitem':
-      s = context.length > 0 && context[context.length - 1]['#name'] === 'orderedlist'
+      s = currentContextName(context) === 'orderedlist'
         ? '1. '
+        : currentContextName(context) === 'variablelist'
+          ? ': '
         : '* ';
       break;
     case 'sp':
@@ -119,16 +145,22 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
     case 'preformatted':
       s = '\n<pre>';
       break;
+    case 'anchor':
+      s = getAnchor(el.$?.id ?? '', parserOptions);
+      break;
     case 'sect1':
     case 'sect2':
     case 'sect3':
+    case 'sect4':
+    case 'sect5':
+    case 'sect6':
       context.push(el);
       s = `\n${getAnchor(el.$?.id ?? '', parserOptions)}\n`;
       break;
     case 'title': {
-      const level = '#'.repeat(Number(context[context.length - 1]?.['#name']?.slice(-1) ?? '1'));
+      const level = '#'.repeat(headingLevel(context));
       const title = trim(el.$$ ? toMarkdown(el.$$, context) : (el._ ?? ''));
-      return `\n#${level} ${title}\n`;
+      return `\n${level} ${title}\n`;
     }
     case 'mdash':
       s = '&mdash;';
@@ -150,7 +182,6 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
     case 'parameterdescription':
     case 'parameternamelist':
     case 'xrefdescription':
-    case 'verbatim':
     case 'hruler':
     case undefined:
       break;
@@ -199,6 +230,10 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
     case 'programlisting':
       s += '```\n';
       break;
+    case 'verbatim':
+      if (s && !s.endsWith('\n')) s += '\n';
+      s += '```\n';
+      break;
     case 'codeline':
       s += '\n';
       break;
@@ -210,8 +245,18 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       s += '\n';
       break;
     case 'itemizedlist':
+      context.pop();
+      s += '\n';
+      break;
+    case 'variablelist':
+      context.pop();
+      s += '\n';
+      break;
     case 'listitem':
       s += '\n';
+      break;
+    case 'term':
+      s += '**';
       break;
     case 'xreftitle':
       s += ': ';
@@ -222,6 +267,9 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
     case 'sect1':
     case 'sect2':
     case 'sect3':
+    case 'sect4':
+    case 'sect5':
+    case 'sect6':
       context.pop();
       s += '\n';
       break;

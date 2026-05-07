@@ -12,6 +12,7 @@ const sharedGroupedSourceDir = join(import.meta.dirname, 'fixtures', 'shared-gro
 const titleDuplicationXmlDir = join(import.meta.dirname, 'fixtures', 'title-duplication', 'xml-out', 'xml');
 const ungroupedXmlDir = join(import.meta.dirname, 'fixtures', 'ungrouped', 'xml-out', 'xml');
 const programlistingLangXmlDir = join(import.meta.dirname, 'fixtures', 'programlisting-language', 'xml-out', 'xml');
+const missingTagsXmlDir = join(import.meta.dirname, 'fixtures', 'missing-tags', 'xml-out', 'xml');
 
 const exampleOutputDir = join(outputRoot, 'example');
 
@@ -291,5 +292,24 @@ describe('integration', () => {
     expect(content).toContain('## Requirements\n\n### Windows\nSupported on Windows 11.');
     expect(content).not.toContain('## Requirements\nRequirements');
     expect(content).not.toContain('### Windows\nWindowsSupported on Windows 11.');
+  });
+
+  it('renders page-oriented XML tags used by detailed docs', async () => {
+    const outputDir = join(outputRoot, 'missing-tags');
+
+    await run({
+      directory: missingTagsXmlDir,
+      output: join(outputDir, '%s.md'),
+      classes: true,
+      anchors: true,
+      quiet: true,
+    });
+
+    const content = read(join(outputDir, 'demo.md')).replace(/\r\n/g, '\n');
+    expect(content).toContain('Manual anchor {#namespacedemo_1manual_anchor}target.');
+    expect(content).toContain('```\ncmake --build .\nctest --output-on-failure\n```');
+    expect(content).toContain('* **Class**: Type-level documentation.');
+    expect(content).toContain('* **Member**: Member-level documentation.');
+    expect(content).toContain('##### Windows\nSupported on Windows 11.');
   });
 });
