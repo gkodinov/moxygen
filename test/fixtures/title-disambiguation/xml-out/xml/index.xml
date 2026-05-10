@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doxygenindex>
+  <compound refid="classdemo_1_1Queue" kind="class"><name>demo::Queue</name></compound>
+  <compound refid="classdemo_1_1ipc_1_1Queue" kind="class"><name>demo::ipc::Queue</name></compound>
+  <compound refid="group__base" kind="group"><name>base</name></compound>
+</doxygenindex>

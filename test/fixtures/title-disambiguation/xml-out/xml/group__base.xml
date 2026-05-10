@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doxygen>
+  <compounddef id="group__base" kind="group">
+    <compoundname>base</compoundname>
+    <title>Base module</title>
+    <innerclass refid="classdemo_1_1Queue" prot="public">demo::Queue</innerclass>
+    <innerclass refid="classdemo_1_1ipc_1_1Queue" prot="public">demo::ipc::Queue</innerclass>
+    <briefdescription>
+      <para>Base module overview.</para>
+    </briefdescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doxygen>
+  <compounddef id="classdemo_1_1Queue" kind="class" language="C++" prot="public">
+    <compoundname>demo::Queue</compoundname>
+    <briefdescription>
+      <para>Root queue.</para>
+    </briefdescription>
+    <location file="queue.h"/>
+  </compounddef>
+</doxygen>

@@ -146,7 +146,7 @@ function extractMeta(compound: Compound, description = extractRawDescription(com
     title,
     kind: compound.kind,
     module: group?.name,
-    namespace: ns?.fullname,
+    namespace: ns?.fullname || compound.namespace || undefined,
     header: compound.includes as string | undefined,
     description,
   };
@@ -624,23 +624,63 @@ export async function generate(
     }
   }
 
-  // Disambiguate: if multiple pages in the same module have the same title,
-  // add the namespace qualifier to distinguish them
-  const titleKey = (p: GeneratedPage) => `${p.module}|${p.title}`;
-  const titleCounts = new Map<string, number>();
-  for (const p of pages) {
-    titleCounts.set(titleKey(p), (titleCounts.get(titleKey(p)) || 0) + 1);
-  }
-  for (const p of pages) {
-    if ((titleCounts.get(titleKey(p)) || 0) > 1 && p.namespace) {
-      const nsShort = lastSegment(p.namespace);
-      if (nsShort && !p.title.includes('::')) {
-        p.title = `${nsShort}::${p.title}`;
-      }
-    }
-  }
+  disambiguateDuplicatePageTitles(pages);
 
   return pages;
+}
+
+function disambiguateDuplicatePageTitles(pages: GeneratedPage[]): void {
+  const byModuleTitle = new Map<string, GeneratedPage[]>();
+
+  for (const page of pages) {
+    const key = `${page.module ?? ''}|${page.title}`;
+    const matches = byModuleTitle.get(key) ?? [];
+    matches.push(page);
+    byModuleTitle.set(key, matches);
+  }
+
+  for (const matches of byModuleTitle.values()) {
+    if (matches.length <= 1) continue;
+
+    const labels = minimallyQualifiedTitles(matches);
+    for (let i = 0; i < matches.length; i += 1) {
+      matches[i].title = labels[i];
+    }
+  }
+}
+
+function minimallyQualifiedTitles(pages: GeneratedPage[]): string[] {
+  const namespaces = pages.map((page) => namespaceParts(page.namespace));
+  const commonPrefix = commonNamespacePrefixLength(namespaces);
+  const suffixes = namespaces.map((parts) => parts.slice(commonPrefix));
+  const maxDepth = Math.max(0, ...suffixes.map((parts) => parts.length));
+
+  for (let depth = 1; depth <= maxDepth; depth += 1) {
+    const labels = pages.map((page, index) => qualifyWithNamespaceSuffix(page.title, suffixes[index], depth));
+    if (new Set(labels).size === labels.length) return labels;
+  }
+
+  return pages.map((page, index) => qualifyWithNamespaceSuffix(page.title, suffixes[index], maxDepth));
+}
+
+function namespaceParts(namespace: string | undefined): string[] {
+  return (namespace ?? '').split('::').filter(Boolean);
+}
+
+function commonNamespacePrefixLength(namespaces: string[][]): number {
+  if (!namespaces.length || namespaces.some((parts) => parts.length === 0)) return 0;
+
+  let prefixLength = 0;
+  while (namespaces.every((parts) => parts[prefixLength] && parts[prefixLength] === namespaces[0][prefixLength])) {
+    prefixLength += 1;
+  }
+
+  return prefixLength;
+}
+
+function qualifyWithNamespaceSuffix(title: string, namespace: string[], depth: number): string {
+  const qualifier = namespace.slice(Math.max(0, namespace.length - depth)).join('::');
+  return qualifier ? `${qualifier}::${title}` : title;
 }
 
 function lastSegment(ns: string): string {

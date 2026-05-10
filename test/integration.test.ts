@@ -9,6 +9,7 @@ const fileGroupedXmlDir = join(import.meta.dirname, 'fixtures', 'file-grouped', 
 const fileGroupedSourceDir = join(import.meta.dirname, 'fixtures', 'file-grouped', 'src');
 const sharedGroupedXmlDir = join(import.meta.dirname, 'fixtures', 'shared-grouped', 'xml-out', 'xml');
 const sharedGroupedSourceDir = join(import.meta.dirname, 'fixtures', 'shared-grouped', 'src');
+const titleDisambiguationXmlDir = join(import.meta.dirname, 'fixtures', 'title-disambiguation', 'xml-out', 'xml');
 const titleDuplicationXmlDir = join(import.meta.dirname, 'fixtures', 'title-duplication', 'xml-out', 'xml');
 const ungroupedXmlDir = join(import.meta.dirname, 'fixtures', 'ungrouped', 'xml-out', 'xml');
 const programlistingLangXmlDir = join(import.meta.dirname, 'fixtures', 'programlisting-language', 'xml-out', 'xml');
@@ -212,6 +213,19 @@ describe('integration', () => {
     expect(peerSession).toBeDefined();
     expect(peerSession!.description)
       .toBe('Session type documented in a different group from [PacketStream](demo-PacketStream.html#packetstream).');
+  });
+
+  it('uses minimal namespace qualifiers for duplicate generated page titles', async () => {
+    const pages = await generate({
+      directory: titleDisambiguationXmlDir,
+      quiet: true,
+    });
+
+    const queue = pages.find((page) => page.slug === 'demo-Queue');
+    const ipcQueue = pages.find((page) => page.slug === 'demo-ipc-Queue');
+
+    expect(queue?.title).toBe('Queue');
+    expect(ipcQueue?.title).toBe('ipc::Queue');
   });
 
   it('writes resolved links into frontmatter descriptions', async () => {
