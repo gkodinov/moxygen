@@ -17,6 +17,27 @@
         <location file="src/member_kinds.h" line="8" column="18"/>
       </memberdef>
     </sectiondef>
+    <sectiondef kind="public-func">
+      <memberdef kind="function" id="classdemo_1_1Utility_1modern" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="virtual" nodiscard="yes" constexpr="yes">
+        <templateparamlist>
+          <param>
+            <type>typename</type>
+            <declname>T</declname>
+          </param>
+        </templateparamlist>
+        <type>auto</type>
+        <definition>auto demo::Utility::modern</definition>
+        <argsstring>() const &amp; noexcept(noexcept(std::declval&lt;T&gt;())) -&gt; int requires std::integral&lt;T&gt;</argsstring>
+        <name>modern</name>
+        <qualifiedname>demo::Utility::modern</qualifiedname>
+        <briefdescription>
+          <para>Modern qualified member.</para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <location file="src/member_kinds.h" line="9" column="18"/>
+      </memberdef>
+    </sectiondef>
     <sectiondef kind="private-func">
       <memberdef kind="function" id="classdemo_1_1Utility_1hidden" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
         <type>void</type>

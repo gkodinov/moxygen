@@ -4,7 +4,7 @@ import Handlebars from 'handlebars';
 import { getAnchor, cleanId, stripMarkdownLinks } from './helpers.js';
 import type { AnchorMap } from './helpers.js';
 import { log } from './logger.js';
-import type { Compound, MoxygenOptions } from './types.js';
+import type { Compound, MoxygenOptions, SourceUrlRoute } from './types.js';
 
 const templates: Record<string, HandlebarsTemplateDelegate> = {};
 let activeAnchorMap: AnchorMap | undefined;
@@ -20,9 +20,96 @@ export function setAnchorMap(map: AnchorMap | undefined): void {
 /**
  * Register Handlebars helpers for template rendering.
  */
-export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlAnchors'>): void {
+export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlAnchors' | 'sourceUrl'>): void {
+  const encodePath = (value: string): string =>
+    value.split('/').map((part) => encodeURIComponent(part)).join('/');
+
+  const applySourceUrlTemplate = (
+    base: string,
+    fullPath: string,
+    line: string,
+    routedPath = fullPath,
+  ): string => {
+    if (base.includes('{path}') || base.includes('{fullPath}') || base.includes('{line}')) {
+      const url = base
+        .replace(/\{path\}/g, encodePath(routedPath))
+        .replace(/\{fullPath\}/g, encodePath(fullPath))
+        .replace(/\{line\}/g, line);
+      return line && !base.includes('{line}') ? `${url}#L${encodeURIComponent(line)}` : url;
+    }
+
+    const separator = base.endsWith('/') ? '' : '/';
+    const url = `${base}${separator}${encodePath(fullPath)}`;
+    return line ? `${url}#L${encodeURIComponent(line)}` : url;
+  };
+
+  const matchingSourceRoute = (routes: SourceUrlRoute[], path: string): SourceUrlRoute | undefined =>
+    routes
+      .filter((route) => path.startsWith(route.prefix))
+      .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+
+  const resolvedSourceHref = (path: string, line: string, symbol?: string): string => {
+    const sourceUrl = options.sourceUrl;
+    if (!sourceUrl) return '';
+
+    if (Array.isArray(sourceUrl)) {
+      const route = matchingSourceRoute(sourceUrl, path);
+      if (!route?.url) return '';
+      const routedPath = path.slice(route.prefix.length);
+      return applySourceUrlTemplate(route.url, path, line, routedPath);
+    }
+
+    const base = typeof sourceUrl === 'function'
+      ? sourceUrl({ path, line: line || undefined, symbol })
+      : sourceUrl;
+    return base ? applySourceUrlTemplate(base, path, line) : '';
+  };
+
+  const cleanCellText = (value: string): string => {
+    const lines = (value || '').split(/\n+/);
+    const kept: string[] = [];
+    for (const line of lines) {
+      if (/^#{2,6}\s+(Parameters|Template Parameters|Exceptions|Returns?)\b/i.test(line.trim())) {
+        break;
+      }
+      kept.push(line);
+    }
+    return kept.join(' ').replace(/\s+/g, ' ').trim();
+  };
+
+  const formatTemplateParams = (params: unknown): string => {
+    if (!Array.isArray(params) || params.length === 0) return '';
+    return `template<${params.map((param) => {
+      const record = param as Record<string, unknown>;
+      const type = stripMarkdownLinks(String(record.type ?? '')).trim();
+      const name = stripMarkdownLinks(String(record.name ?? '')).trim();
+      const defaultValue = stripMarkdownLinks(String(record.defaultValue ?? '')).trim();
+      return [
+        name ? `${type} ${name}` : type,
+        defaultValue ? ` = ${defaultValue}` : '',
+      ].join('');
+    }).filter(Boolean).join(', ')}>`;
+  };
+
+  const sourceLabel = (record: Record<string, unknown>): string => {
+    const location = typeof record.location === 'string' ? record.location : '';
+    if (!location) return '';
+    const line = typeof record.locationLine === 'string' ? record.locationLine : '';
+    return line ? `${location}:${line}` : location;
+  };
+
+  const sourceHref = (record: Record<string, unknown>): string => {
+    const location = typeof record.location === 'string' ? record.location : '';
+    if (!options.sourceUrl || !location) return '';
+
+    const path = location.replace(/^\.?\//, '');
+    const line = typeof record.locationLine === 'string' ? record.locationLine : '';
+    const symbol = typeof record.name === 'string' ? record.name : undefined;
+    return resolvedSourceHref(path, line, symbol);
+  };
+
   const synthesizedMemberSummary = (member: Record<string, unknown>): string => {
-    const summary = typeof member.summary === 'string' ? member.summary.trim() : '';
+    const summary = typeof member.summary === 'string' ? cleanCellText(member.summary) : '';
     if (summary) return summary;
 
     const qualifiers = Array.isArray(member.qualifiers)
@@ -46,7 +133,7 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
 
   // Classic helpers
   Handlebars.registerHelper('cell', (code: string) =>
-    code.replace(/\|/g, '\\|').replace(/\n/g, '<br/>'),
+    cleanCellText(code).replace(/\|/g, '\\|').replace(/\n/g, '<br/>'),
   );
 
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -84,6 +171,17 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
     if (kind === 'enum') {
       return `enum ${member.name}`;
     }
+    if (kind === 'typedef') {
+      const rt = stripMarkdownLinks(member.returnType as string).trim();
+      return rt ? `using ${member.name} = ${rt}` : String(member.definition ?? `using ${member.name}`);
+    }
+    if (kind === 'friend' && !String(member.argsstring ?? '').trim()) {
+      const templatePrefix = formatTemplateParams(member.templateParams);
+      const rt = stripMarkdownLinks(member.returnType as string).trim();
+      return [templatePrefix, 'friend', rt, stripMarkdownLinks(String(member.name ?? '')).trim()]
+        .filter(Boolean)
+        .join(' ');
+    }
     if (kind === 'variable') {
       const init = member.initializer as string;
       return init
@@ -96,13 +194,12 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
 
     // function/signal/slot
     const parts: string[] = [];
-    const tparams = member.templateParams as Array<{ type: string; name: string }>;
-    if (tparams && tparams.length > 0) {
-      parts.push('template<' + tparams.map(tp => {
-        const type = stripMarkdownLinks(tp.type);
-        return tp.name ? `${type} ${tp.name}` : type;
-      }).join(', ') + '>');
-    }
+    if (kind === 'friend') parts.push('friend');
+    const tparams = member.templateParams as Array<{ type: string; name: string; defaultValue?: string }>;
+    const templatePrefix = formatTemplateParams(tparams);
+    if (templatePrefix) parts.push(templatePrefix);
+    const prefixQualifiers = member.prefixQualifiers as string[];
+    if (prefixQualifiers) parts.push(...prefixQualifiers);
     if (member.isVirtual) parts.push('virtual');
     if (member.isStatic) parts.push('static');
     if (member.isInline) parts.push('inline');
@@ -113,7 +210,8 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
     const paramStr = params
       ? params.map((p) => {
         const type = stripMarkdownLinks(p.type);
-        return p.name ? `${type} ${p.name}` : type;
+        const defaultValue = stripMarkdownLinks(String((p as { defaultValue?: string }).defaultValue ?? '')).trim();
+        return `${p.name ? `${type} ${p.name}` : type}${defaultValue ? ` = ${defaultValue}` : ''}`;
       }).join(', ')
       : '';
     parts.push(`${member.name}(${paramStr})`);
@@ -134,6 +232,16 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
     if (member.isConst) badges.push('const');
     if (member.isInline) badges.push('inline');
     if (member.isExplicit) badges.push('explicit');
+    if (member.isNodiscard) badges.push('nodiscard');
+    if (member.isConstexpr) badges.push('constexpr');
+    if (member.isConsteval) badges.push('consteval');
+    const qualifiers = Array.isArray(member.qualifiers)
+      ? member.qualifiers.filter((q): q is string => typeof q === 'string')
+      : [];
+    for (const q of qualifiers) {
+      if (q === 'const' || q === '= delete' || q === '= default') continue;
+      badges.push(q);
+    }
     return badges.map(b => `\`${b}\``).join(' ');
   });
 
@@ -180,6 +288,21 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
     return synthesizedMemberSummary(this);
   });
 
+  Handlebars.registerHelper('classSignature', function (this: Record<string, unknown>) {
+    const templatePrefix = formatTemplateParams(this.templateParams);
+    const kind = this.kind === 'interface' ? 'class' : String(this.kind ?? 'class');
+    const name = this.shortname || this.name;
+    return [templatePrefix, `${kind} ${name}`].filter(Boolean).join('\n');
+  });
+
+  Handlebars.registerHelper('sourceLabel', function (this: Record<string, unknown>) {
+    return sourceLabel(this);
+  });
+
+  Handlebars.registerHelper('sourceHref', function (this: Record<string, unknown>) {
+    return sourceHref(this);
+  });
+
   // Clean anchor: generates a readable anchor, using the anchor map for consistency
   Handlebars.registerHelper('cleanAnchor', (refid: string, name: string) => {
     const id = activeAnchorMap?.get(refid) ?? cleanId(name || refid);
@@ -210,7 +333,7 @@ export function registerHelpers(options: Pick<MoxygenOptions, 'anchors' | 'htmlA
 
   // Whether a section should show the return/type column
   Handlebars.registerHelper('hasReturnColumn', (section: string) => {
-    const noReturn = new Set(['enum', 'define', 'public-type']);
+    const noReturn = new Set(['enum', 'define', 'public-type', 'friend']);
     return !noReturn.has(section);
   });
 }
@@ -266,6 +389,7 @@ export function render(compound: Compound): string | undefined {
     case 'union':
     case 'interface':
     case 'enum':
+    case 'concept':
       templateName = 'class';
       break;
     default:

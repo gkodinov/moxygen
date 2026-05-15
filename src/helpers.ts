@@ -49,6 +49,17 @@ export function stripMarkdownLinks(text: string): string {
 }
 
 /**
+ * Convert a C++ symbol into a filesystem- and URL-safe path segment.
+ */
+export function safePathSegment(name: string): string {
+  return (name || 'unknown')
+    .replace(/::/g, '-')
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'unknown';
+}
+
+/**
  * Generate an anchor string based on options.
  */
 export function getAnchor(name: string, options: Pick<MoxygenOptions, 'anchors' | 'htmlAnchors'>): string {
@@ -224,7 +235,7 @@ export function compoundPath(compound: Compound, options: MoxygenOptions): strin
   if (options.classes) {
     return utilFormat(
       options.output,
-      compound.name.replace(/::/g, '-').replace('<', '(').replace('>', ')'),
+      safePathSegment(compound.name),
     );
   }
   return options.output;

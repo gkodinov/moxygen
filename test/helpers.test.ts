@@ -6,6 +6,7 @@ import {
   stripMarkdownLinks,
   buildCleanAnchorMap,
   compoundPath,
+  safePathSegment,
   resolveRefs,
 } from '../src/helpers.js';
 import { createCompound } from '../src/compound.js';
@@ -260,6 +261,23 @@ describe('helpers', () => {
       options.groups = false;
 
       expect(compoundPath(compound, options)).toBe('/tmp/docs/icy-wrtc-MediaBridge.md');
+    });
+
+    it('sanitizes template specialization names for portable paths', () => {
+      const compound = createCompound(null, 'classicy_1_1Signal_special', 'icy::Signal< RT(Args...), MutexT >');
+      compound.kind = 'class';
+
+      const options = makeOptions('/tmp/docs/%s.md');
+      options.classes = true;
+      options.groups = false;
+
+      expect(compoundPath(compound, options)).toBe('/tmp/docs/icy-Signal-RT-Args-MutexT.md');
+    });
+  });
+
+  describe('safePathSegment', () => {
+    it('removes filesystem-hostile C++ punctuation', () => {
+      expect(safePathSegment('icy::Signal< RT(Args...), MutexT >')).toBe('icy-Signal-RT-Args-MutexT');
     });
   });
 });

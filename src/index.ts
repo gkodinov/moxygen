@@ -2,13 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toArray, toFilteredArray, filterChildren, filterNoise, groupMembersBySection } from './compound.js';
-import { writeCompound, renderCompound, compoundPath, writeFile, buildCleanAnchorMap } from './helpers.js';
+import { writeCompound, renderCompound, compoundPath, writeFile, buildCleanAnchorMap, safePathSegment, stripMarkdownLinks } from './helpers.js';
 import type { AnchorMap, PagePathMap, SlugMap } from './helpers.js';
 import { log } from './logger.js';
 import { loadIndex } from './parser.js';
 import * as templates from './templates.js';
 import { setAnchorMap } from './templates.js';
-import type { Compound, Filters, MoxygenOptions, References } from './types.js';
+import type { AllMemberEntry, Compound, Filters, InheritedMemberGroup, MoxygenOptions, References } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +18,7 @@ export const defaultFilters: Filters = {
     'enum',
     'typedef',
     'func',
+    'friend',
     'var',
     'property',
     'public-attrib',
@@ -44,6 +45,7 @@ export const defaultFilters: Filters = {
     'typedef',
     'interface',
     'enum',
+    'concept',
   ],
 };
 
@@ -113,8 +115,21 @@ export interface GeneratedPage {
   namespace?: string;
   header?: string;
   description: string;
+  searchEntries?: GeneratedSearchEntry[];
   /** Rendered markdown body (no frontmatter; use metadata fields directly) */
   markdown: string;
+}
+
+export interface GeneratedSearchEntry {
+  title: string;
+  content: string;
+  anchor?: string;
+  category: string;
+  symbolKind?: string;
+  owner?: string;
+  ownerKind?: string;
+  namespace?: string;
+  qualifiedName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +212,73 @@ export function generateFrontmatter(meta: CompoundMeta): string {
 function prepareCompound(compound: Compound): void {
   compound.filtered.members = filterNoise(compound.filtered.members);
   compound.filtered.sections = groupMembersBySection(compound);
+}
+
+function memberOwnerName(compound: Compound): string {
+  return compound.fullname || compound.name || qualifiedTitle(compound);
+}
+
+function collectOwnAllMemberEntries(compound: Compound): AllMemberEntry[] {
+  const owner = memberOwnerName(compound);
+  const members = compound.filtered?.members?.length ? compound.filtered.members : compound.members;
+  return members.map((member) => ({
+    name: member.name,
+    kind: member.kind,
+    refid: member.refid,
+    owner,
+    ownerRefid: compound.refid,
+    inherited: false,
+  }));
+}
+
+function collectInheritedMemberGroups(compound: Compound, references: References): InheritedMemberGroup[] {
+  const seenBaseRefids = new Set<string>();
+  const groups: InheritedMemberGroup[] = [];
+
+  const visitBase = (baseRefid: string | undefined): void => {
+    if (!baseRefid || seenBaseRefids.has(baseRefid)) return;
+    seenBaseRefids.add(baseRefid);
+
+    const base = references[baseRefid] as Compound | undefined;
+    if (!base || !('members' in base)) return;
+
+    const members = base.filtered?.members?.length ? base.filtered.members : base.members;
+    if (members.length) {
+      groups.push({
+        name: memberOwnerName(base),
+        refid: base.refid,
+        members,
+      });
+    }
+
+    for (const parent of base.basecompoundref ?? []) {
+      visitBase(parent.refid);
+    }
+  };
+
+  for (const base of compound.basecompoundref ?? []) {
+    visitBase(base.refid);
+  }
+
+  return groups;
+}
+
+function attachRelationshipSummaries(compounds: Compound[], references: References): void {
+  for (const compound of compounds) {
+    compound.inheritedMemberGroups = collectInheritedMemberGroups(compound, references);
+    const inheritedEntries = compound.inheritedMemberGroups.flatMap((group) =>
+      group.members.map((member) => ({
+        name: member.name,
+        kind: member.kind,
+        refid: member.refid,
+        owner: group.name,
+        ownerRefid: group.refid,
+        inherited: true,
+      })),
+    );
+    compound.allMembers = [...collectOwnAllMemberEntries(compound), ...inheritedEntries]
+      .filter((entry) => entry.name && entry.refid);
+  }
 }
 
 const GROUP_MARKER_RE = /(?:@|\\)(?:addtogroup|ingroup)\s+([A-Za-z_][\w:-]*)/g;
@@ -548,6 +630,7 @@ export async function generate(
     slugMap.set(c.refid, slugify(c.name));
   }
   const pagePathMap = useGroups ? buildGroupedNamespacePagePathMap(groups) : undefined;
+  attachRelationshipSummaries(allCompounds, references);
 
   // Second pass: render (dedup by refid)
   const seen = new Set<string>();
@@ -567,10 +650,15 @@ export async function generate(
         ...meta,
         title: compound.shortname || compound.name,
         module: compound.name,
+        searchEntries: collectSearchEntries(compound, anchorMap),
         markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap),
       });
     } else {
-      pages.push({ ...meta, markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap) });
+      pages.push({
+        ...meta,
+        searchEntries: collectSearchEntries(compound, anchorMap),
+        markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap),
+      });
     }
   }
 
@@ -709,6 +797,78 @@ function buildGroupedNamespacePagePathMap(groups: Compound[]): PagePathMap {
   return map;
 }
 
+function collectSearchEntries(compound: Compound, anchorMap?: AnchorMap): GeneratedSearchEntry[] {
+  const entries: GeneratedSearchEntry[] = [];
+  const members = compound.filtered?.members?.length ? compound.filtered.members : compound.members;
+  const ownerTitle = qualifiedTitle(compound);
+  const owner = compound.fullname || compound.name || ownerTitle;
+  const namespace = compound.namespace || findNamespace(compound)?.fullname;
+
+  for (const member of members) {
+    if (!member.refid || !member.name) continue;
+    const qualifiedName = owner ? `${owner}::${member.name}` : member.name;
+    const signature = typeof member.definition === 'string' && member.definition
+      ? stripMarkdownLinks(member.definition)
+      : stripMarkdownLinks(member.proto || member.name);
+    const summary = stripMarkdownLinks(member.summary || member.briefdescription || '').replace(/\s+/g, ' ').trim();
+    entries.push({
+      title: `${member.name}`,
+      content: [qualifiedName, ownerTitle, signature, summary].filter(Boolean).join(' — '),
+      anchor: anchorMap?.get(member.refid),
+      category: searchCategoryForKind(member.kind),
+      symbolKind: member.kind,
+      owner,
+      ownerKind: compound.kind,
+      namespace,
+      qualifiedName,
+    });
+
+    if (member.enumvalue?.length) {
+      for (const value of member.enumvalue) {
+        const enumQualifiedName = `${qualifiedName}::${value.name}`;
+        entries.push({
+          title: value.name,
+          content: [enumQualifiedName, ownerTitle, member.name, stripMarkdownLinks(value.summary || value.briefdescription || '')]
+            .filter(Boolean)
+            .join(' — '),
+          anchor: anchorMap?.get(member.refid),
+          category: 'Enum Values',
+          symbolKind: 'enumvalue',
+          owner: qualifiedName,
+          ownerKind: 'enum',
+          namespace,
+          qualifiedName: enumQualifiedName,
+        });
+      }
+    }
+  }
+
+  return entries;
+}
+
+function searchCategoryForKind(kind: string): string {
+  switch (kind) {
+    case 'function':
+    case 'signal':
+    case 'slot':
+      return 'Functions';
+    case 'typedef':
+      return 'Types';
+    case 'enum':
+      return 'Enums';
+    case 'variable':
+      return 'Variables';
+    case 'friend':
+      return 'Friends';
+    case 'property':
+      return 'Properties';
+    case 'define':
+      return 'Macros';
+    default:
+      return 'Members';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // run() — CLI API writing to disk
 // ---------------------------------------------------------------------------
@@ -781,6 +941,7 @@ export async function run(options: Partial<MoxygenOptions> & { directory: string
   // --- Build anchor map once ---
   const anchorMap = buildCleanAnchorMap(allCompounds);
   setAnchorMap(anchorMap);
+  attachRelationshipSummaries(allCompounds, references);
 
   // --- Pass 2: render + write ---
   if (opts.groups) {
@@ -927,7 +1088,7 @@ function qualifiedTitle(compound: Compound): string {
 }
 
 function slugify(name: string): string {
-  return name.replace(/::/g, '-').replace(/[<>]/g, '').replace(/\s+/g, '-');
+  return safePathSegment(name);
 }
 
 // ---------------------------------------------------------------------------

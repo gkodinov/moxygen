@@ -1,3 +1,24 @@
+export interface SourceUrlInput {
+  path: string;
+  line?: string;
+  symbol?: string;
+}
+
+export interface SourceUrlRoute {
+  /** Doxygen source path prefix. Longest matching prefix wins. */
+  prefix: string;
+  /**
+   * Base URL or template for this route. Omit or set false to suppress public
+   * links while still rendering the plain "Defined in path:line" location.
+   */
+  url?: string | false;
+}
+
+export type SourceUrlResolver =
+  | string
+  | SourceUrlRoute[]
+  | ((input: SourceUrlInput) => string | undefined);
+
 export interface MoxygenOptions {
   directory: string;
   output: string;
@@ -10,6 +31,7 @@ export interface MoxygenOptions {
   language: string;
   templates: string;
   sourceRoot?: string;
+  sourceUrl?: SourceUrlResolver;
   logfile?: string | boolean;
   quiet: boolean;
   frontmatter: boolean;
@@ -25,6 +47,7 @@ export interface Param {
   type: string;
   name: string;
   description: string;
+  defaultValue?: string;
 }
 
 export interface EnumValue {
@@ -32,6 +55,14 @@ export interface EnumValue {
   briefdescription: string;
   detaileddescription: string;
   summary: string;
+}
+
+export interface RelationRef {
+  name: string;
+  refid?: string;
+  compoundref?: string;
+  startline?: string;
+  endline?: string;
 }
 
 export interface Member {
@@ -52,12 +83,14 @@ export interface Member {
   groupname?: string;
   id?: string;
   location?: string;
+  locationLine?: string;
 
   // Structured fields for modern templates
   returnType: string;
   params: Param[];
   templateParams: Param[];
   qualifiers: string[];
+  prefixQualifiers: string[];
   definition: string;
   argsstring: string;
   initializer: string;
@@ -66,6 +99,13 @@ export interface Member {
   isExplicit: boolean;
   isStatic: boolean;
   isVirtual: boolean;
+  isNodiscard: boolean;
+  isConstexpr: boolean;
+  isConsteval: boolean;
+  references: RelationRef[];
+  referencedBy: RelationRef[];
+  reimplements: RelationRef[];
+  reimplementedBy: RelationRef[];
 
   [key: string]: unknown;
 }
@@ -74,6 +114,22 @@ export interface BaseCompoundRef {
   prot: string;
   name: string;
   refid?: string;
+  virt?: string;
+}
+
+export interface InheritedMemberGroup {
+  name: string;
+  refid?: string;
+  members: Member[];
+}
+
+export interface AllMemberEntry {
+  name: string;
+  kind: string;
+  refid?: string;
+  owner: string;
+  ownerRefid?: string;
+  inherited: boolean;
 }
 
 export interface Compound {
@@ -88,6 +144,8 @@ export interface Compound {
   members: Member[];
   basecompoundref: BaseCompoundRef[];
   derivedcompoundref: BaseCompoundRef[];
+  inheritedMemberGroups: InheritedMemberGroup[];
+  allMembers: AllMemberEntry[];
   filtered: {
     compounds: Compound[];
     members: Member[];
@@ -98,12 +156,14 @@ export interface Compound {
   summary: string;
   proto: string;
   namespace: string;
+  templateParams: Param[];
   groupid?: string;
   groupname?: string;
   innernamespaces?: unknown[];
   includes?: string;
   language?: string;
   location?: string;
+  locationLine?: string;
   fileCompoundRefs?: string[];
   fileNamespaceRefs?: string[];
   [key: string]: unknown;

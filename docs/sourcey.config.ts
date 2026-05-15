@@ -1,4 +1,4 @@
-import { defineConfig } from "sourcey";
+import { defineConfig, markdown } from "sourcey";
 
 export default defineConfig({
   name: "Moxygen",
@@ -18,20 +18,22 @@ export default defineConfig({
       {
         tab: "Documentation",
         slug: "",
-        groups: [
-          {
-            group: "Getting Started",
-            pages: ["introduction", "quickstart", "writing-doxygen"],
-          },
-          {
-            group: "Usage",
-            pages: ["cli-reference", "programmatic-api", "custom-templates"],
-          },
-          {
-            group: "Advanced",
-            pages: ["grouping-modes"],
-          },
-        ],
+        source: markdown({
+          groups: [
+            {
+              group: "Getting Started",
+              pages: ["introduction", "quickstart", "writing-doxygen"],
+            },
+            {
+              group: "Usage",
+              pages: ["cli-reference", "programmatic-api", "custom-templates"],
+            },
+            {
+              group: "Advanced",
+              pages: ["grouping-modes"],
+            },
+          ],
+        }),
       },
     ],
   },
@@ -42,8 +44,6 @@ export default defineConfig({
     ],
   },
   footer: {
-    links: [
-      { type: "github", href: "https://github.com/sourcey/moxygen" },
-    ],
+    links: [{ type: "github", href: "https://github.com/sourcey/moxygen" }],
   },
 });

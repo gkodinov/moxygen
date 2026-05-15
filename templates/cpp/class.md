@@ -8,6 +8,13 @@
 ```
 {{/if}}
 
+```cpp
+{{classSignature}}
+```
+
+{{#if (sourceLabel)}}{{#if (sourceHref)}}[Defined in {{sourceLabel}}]({{sourceHref}}){{else}}Defined in {{sourceLabel}}{{/if}}
+{{/if}}
+
 {{#if basecompoundref}}> **Inherits:** {{#each basecompoundref}}{{linkedName name refid}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 {{#if derivedcompoundref}}> **Subclassed by:** {{#each derivedcompoundref}}{{linkedName name refid}}{{#unless @last}}, {{/unless}}{{/each}}
@@ -17,6 +24,24 @@
 
 {{detaileddescription}}
 
+{{#if allMembers}}
+### List of all members
+
+| Name | Kind | Owner |
+|------|------|-------|
+{{#each allMembers}}| {{linkedName name refid}} | `{{kind}}` | {{#if inherited}}Inherited from {{linkedName owner ownerRefid}}{{else}}Declared here{{/if}} |
+{{/each}}
+
+{{/if}}
+{{#each inheritedMemberGroups}}
+### Inherited from {{linkedName name refid}}
+
+| Kind | Name | Description |
+|------|------|-------------|
+{{#each members}}| `{{kind}}` | {{linkedName name refid}} {{badges}} | {{cell (memberSummary this)}} |
+{{/each}}
+
+{{/each}}
 {{#each filtered.sections}}
 ### {{label}}
 
@@ -46,9 +71,41 @@
 {{signature}}
 ```
 
+{{#if (sourceLabel)}}{{#if (sourceHref)}}[Defined in {{sourceLabel}}]({{sourceHref}}){{else}}Defined in {{sourceLabel}}{{/if}}
+{{/if}}
+
 {{briefdescription}}
 
 {{detaileddescription}}
+
+{{#if referencedBy}}
+##### Referenced by
+
+{{#each referencedBy}}- {{linkedName name refid}}
+{{/each}}
+
+{{/if}}
+{{#if references}}
+##### References
+
+{{#each references}}- {{linkedName name refid}}
+{{/each}}
+
+{{/if}}
+{{#if reimplements}}
+##### Reimplements
+
+{{#each reimplements}}- {{linkedName name refid}}
+{{/each}}
+
+{{/if}}
+{{#if reimplementedBy}}
+##### Reimplemented by
+
+{{#each reimplementedBy}}- {{linkedName name refid}}
+{{/each}}
+
+{{/if}}
 
 {{#unless briefdescription}}
 {{#unless detaileddescription}}

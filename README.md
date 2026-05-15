@@ -17,6 +17,8 @@ Used as the C++ documentation engine in [Sourcey](https://github.com/sourcey/sou
 - **Markdown comments** - Markdown in Doxygen comments is rendered
 - **Doxygen groups** - [grouping](http://www.doxygen.nl/manual/grouping.html) support for organised docs
 - **Grouped and ungrouped codebases** - works with explicit grouped compounds and normal namespace/class output
+- **Modern C++ signatures** - class template parameters, default arguments, typedef aliases, friend declarations, `constexpr`/`consteval`, `[[nodiscard]]`, conditional `noexcept`, ref qualifiers, trailing returns, and `requires` clauses
+- **Reference-depth sections** - source locations, examples, inherited members, all-member indexes, referenced-by links, and reimplementation relationships when present in the XML
 - **Structured landing pages** - namespace and group pages separate nested namespaces, types, and enums
 - **Custom templates** - modify the Handlebars templates to suit your needs
 - **Optional index** - optionally render a top-level index

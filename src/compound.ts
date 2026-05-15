@@ -17,12 +17,15 @@ export function createCompound(
     members: [],
     basecompoundref: [],
     derivedcompoundref: [],
+    inheritedMemberGroups: [],
+    allMembers: [],
     filtered: { compounds: [], members: [], sections: [] },
     briefdescription: '',
     detaileddescription: '',
     summary: '',
     proto: '',
     namespace: '',
+    templateParams: [],
   };
 }
 
@@ -197,6 +200,7 @@ const SECTION_LABELS: Record<string, string> = {
   'property': 'Properties',
   'enum': 'Enumerations',
   'typedef': 'Typedefs',
+  'friend': 'Friends',
   'define': 'Macros',
   'func': 'Functions',
   'var': 'Variables',

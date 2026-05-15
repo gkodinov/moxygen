@@ -343,6 +343,9 @@ describe('integration', () => {
     expect(utility).toContain('### Public Static Methods');
     expect(utility).toContain('| `Utility` | [`create`](#create) `static` | Creates a utility instance. |');
     expect(utility).toContain('static Utility create()');
+    expect(utility).toContain('### Public Methods');
+    expect(utility).toContain('| `auto` | [`modern`](#modern) `virtual` `const` `inline` `nodiscard` `constexpr` `&` `noexcept(noexcept(std::declval<T>()))` `-> int` `requires std::integral<T>` | Modern qualified member. |');
+    expect(utility).toContain('template<typename T> [[nodiscard]] constexpr virtual inline auto modern() const & noexcept(noexcept(std::declval<T>())) -> int requires std::integral<T>');
     expect(utility).toContain('### Private Methods');
     expect(utility).toContain('Hidden helper method.');
     expect(utility).toContain('### Private Attributes');

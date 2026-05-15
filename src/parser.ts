@@ -11,6 +11,7 @@ import type {
   Member,
   MoxygenOptions,
   Param,
+  RelationRef,
   References,
   XmlElement,
 } from './types.js';
@@ -51,6 +52,9 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
   // Opening
   switch (el['#name']) {
     case 'ref':
+      if (currentContextName(context) === 'programlisting') {
+        return s + toMarkdown(el.$$, context);
+      }
       return s + md.refLink(toMarkdown(el.$$), el.$?.refid ?? '');
     case '__text__':
       s = el._ ?? '';
@@ -75,6 +79,7 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       break;
     case 'programlisting': {
       const lang = el.$?.filename?.match(/\.([a-z0-9]+)$/i)?.[1] ?? 'cpp';
+      context.push(el);
       s = `\n\`\`\`${lang}\n`;
       break;
     }
@@ -117,6 +122,7 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       break;
     case 'simplesect': {
       const kind = el.$?.kind;
+      context.push(el);
       if (kind === 'attention' || kind === 'warning') {
         s = '\n:::warning\n';
       } else if (kind === 'note' || kind === 'remark') {
@@ -129,6 +135,20 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
         s = '**See also**: ';
       } else if (kind === 'since') {
         s = '**Since**: ';
+      } else if (kind === 'pre') {
+        s = '\n#### Preconditions\n';
+      } else if (kind === 'post') {
+        s = '\n#### Postconditions\n';
+      } else if (kind === 'invariant') {
+        s = '\n#### Invariants\n';
+      } else if (kind === 'author') {
+        s = '**Author**: ';
+      } else if (kind === 'copyright') {
+        s = '**Copyright**: ';
+      } else if (kind === 'par') {
+        const title = el.$$?.find((child) => child['#name'] === 'title');
+        const titleText = title ? trim(toMarkdown(title.$$, context)) || trim(title._ ?? '') : '';
+        s = titleText ? `\n#### ${titleText}\n` : '\n#### Notes\n';
       } else {
         log.warn(`simplesect kind '${kind}' not supported`);
       }
@@ -148,6 +168,11 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
     case 'anchor':
       s = getAnchor(el.$?.id ?? '', parserOptions);
       break;
+    case 'image': {
+      const name = el.$?.name ?? '';
+      const caption = trim(el.$$ ? toMarkdown(el.$$, context) : (el._ ?? ''));
+      return name ? `![${caption}](${name})` : caption;
+    }
     case 'sect1':
     case 'sect2':
     case 'sect3':
@@ -158,6 +183,9 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       s = `\n${getAnchor(el.$?.id ?? '', parserOptions)}\n`;
       break;
     case 'title': {
+      if (currentContextName(context) === 'simplesect') {
+        return '';
+      }
       const level = '#'.repeat(headingLevel(context));
       const title = trim(el.$$ ? toMarkdown(el.$$, context) : (el._ ?? ''));
       return `\n${level} ${title}\n`;
@@ -203,6 +231,7 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       } else {
         s += '\n\n';
       }
+      context.pop();
       break;
     }
     case 'parameterlist':
@@ -229,6 +258,7 @@ function toMarkdown(element: unknown, context: XmlElement[] = []): string {
       break;
     case 'programlisting':
       s += '```\n';
+      context.pop();
       break;
     case 'verbatim':
       if (s && !s.endsWith('\n')) s += '\n';
@@ -303,7 +333,97 @@ function mdSummary(def: Record<string, unknown>): string {
       if (firstSentence) summary = firstSentence;
     }
   }
-  return summary;
+  return cleanSummary(summary);
+}
+
+function cleanSummary(summary: string): string {
+  const lines = summary.split(/\n+/);
+  const kept: string[] = [];
+
+  for (const line of lines) {
+    if (/^#{2,6}\s+(Parameters|Template Parameters|Exceptions|Returns?)\b/i.test(line.trim())) {
+      break;
+    }
+    kept.push(line);
+  }
+
+  return kept.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function parseTemplateParams(def: Record<string, unknown>): Param[] {
+  const result: Param[] = [];
+  const tpl = def.templateparamlist as Array<Record<string, unknown>> | undefined;
+  if (!tpl?.length || !(tpl[0] as Record<string, unknown>).param) return result;
+
+  const params = (tpl[0] as Record<string, unknown>).param as Array<Record<string, unknown>>;
+  for (const param of params) {
+    result.push({
+      type: trim(toMarkdown(param.type)),
+      name: param.declname ? trim(toMarkdown(param.declname)) : '',
+      description: '',
+      defaultValue: param.defval ? trim(toMarkdown(param.defval)) : undefined,
+    });
+  }
+
+  return result;
+}
+
+function parseRelationRefs(def: Record<string, unknown>, property: string): RelationRef[] {
+  const refs = def[property] as Array<Record<string, unknown>> | undefined;
+  if (!refs?.length) return [];
+
+  return refs.map((ref) => {
+    const attrs = (ref.$ ?? {}) as Record<string, string>;
+    return {
+      name: trim(toMarkdown(ref)) || String(ref._ ?? ''),
+      refid: attrs.refid,
+      compoundref: attrs.compoundref,
+      startline: attrs.startline,
+      endline: attrs.endline,
+    };
+  }).filter((ref) => ref.name || ref.refid);
+}
+
+function normalizeQualifier(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function pushUnique(list: string[], value: string | undefined): void {
+  const normalized = normalizeQualifier(value ?? '');
+  if (normalized && !list.includes(normalized)) list.push(normalized);
+}
+
+function extractBalancedCall(source: string, keyword: string): string | undefined {
+  const match = new RegExp(`\\b${keyword}\\b`).exec(source);
+  if (!match) return undefined;
+
+  let index = match.index + keyword.length;
+  while (/\s/.test(source[index] ?? '')) index += 1;
+  if (source[index] !== '(') return keyword;
+
+  const start = index;
+  let depth = 0;
+  for (; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '(') depth += 1;
+    if (char === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        return `${keyword}${source.slice(start, index + 1)}`;
+      }
+    }
+  }
+
+  return keyword;
+}
+
+function extractRequiresClause(source: string): string | undefined {
+  const match = /\brequires\b/.exec(source);
+  if (!match) return undefined;
+
+  let clause = source.slice(match.index).replace(/\s*=\s*(?:delete|default)\s*;?$/, '');
+  clause = clause.replace(/\s*(?:override|final)\s*$/, '');
+  return clause;
 }
 
 function parseMembers(
@@ -334,6 +454,7 @@ function parseMembers(
         params: [],
         templateParams: [],
         qualifiers: [],
+        prefixQualifiers: [],
         definition: '',
         argsstring: '',
         initializer: '',
@@ -342,6 +463,13 @@ function parseMembers(
         isExplicit: false,
         isStatic: false,
         isVirtual: false,
+        isNodiscard: false,
+        isConstexpr: false,
+        isConsteval: false,
+        references: [],
+        referencedBy: [],
+        reimplements: [],
+        reimplementedBy: [],
       };
       compound.members.push(member);
 
@@ -407,14 +535,21 @@ function parseMember(
   member.isInline = attrs.inline === 'yes';
   member.isExplicit = attrs.explicit === 'yes';
   member.isStatic = attrs.static === 'yes';
-  member.isVirtual = attrs.virt === 'virtual';
+  member.isVirtual = attrs.virt === 'virtual' || attrs.virt === 'pure-virtual';
+  member.isNodiscard = attrs.nodiscard === 'yes';
+  member.isConstexpr = attrs.constexpr === 'yes';
+  member.isConsteval = attrs.consteval === 'yes';
   member.returnType = trim(toMarkdown(memberdef.type));
 
   if (memberdef.location) {
     const locations = memberdef.location as Array<Record<string, Record<string, string>>>;
-    const location = locations?.[0]?.$?.file;
+    const locationAttrs = locations?.[0]?.$;
+    const location = locationAttrs?.file;
     if (location) {
       member.location = location;
+    }
+    if (locationAttrs?.line) {
+      member.locationLine = locationAttrs.line;
     }
   }
 
@@ -431,23 +566,15 @@ function parseMember(
   // Extract parameter descriptions from the detailed description XML
   const paramDescs = extractParamDescriptions(memberdef);
 
-  // Template parameters
-  if (memberdef.templateparamlist) {
-    const tpl = memberdef.templateparamlist as Array<Record<string, unknown>>;
-    if (tpl.length > 0 && (tpl[0] as Record<string, unknown>).param) {
-      const params = (tpl[0] as Record<string, unknown>).param as Array<Record<string, unknown>>;
-      for (const param of params) {
-        member.templateParams.push({
-          type: trim(toMarkdown(param.type)),
-          name: param.declname ? trim(toMarkdown(param.declname)) : '',
-          description: '',
-        });
-      }
-    }
-  }
+  member.templateParams = parseTemplateParams(memberdef);
+  member.references = parseRelationRefs(memberdef, 'references');
+  member.referencedBy = parseRelationRefs(memberdef, 'referencedby');
+  member.reimplements = parseRelationRefs(memberdef, 'reimplements');
+  member.reimplementedBy = parseRelationRefs(memberdef, 'reimplementedby');
 
   // Function parameters
-  if (memberdef.param && (member.kind === 'function' || member.kind === 'signal' || member.kind === 'slot')) {
+  const hasCallableArgs = member.kind !== 'friend' || !!member.argsstring.trim();
+  if (memberdef.param && hasCallableArgs && (member.kind === 'function' || member.kind === 'signal' || member.kind === 'slot' || member.kind === 'friend')) {
     const params = memberdef.param as Array<Record<string, unknown>>;
     for (const param of params) {
       const paramName = param.declname ? trim(toMarkdown(param.declname)) : '';
@@ -455,24 +582,75 @@ function parseMember(
         type: trim(toMarkdown(param.type)),
         name: paramName,
         description: paramDescs[paramName] ?? '',
+        defaultValue: param.defval ? trim(toMarkdown(param.defval)) : undefined,
       });
     }
   }
 
   // Qualifiers
+  const prefixQualifiers: string[] = [];
   const qualifiers: string[] = [];
+  if (member.isNodiscard) prefixQualifiers.push('[[nodiscard]]');
+  if (member.isConsteval) prefixQualifiers.push('consteval');
+  if (member.isConstexpr) prefixQualifiers.push('constexpr');
   if (member.isConst) qualifiers.push('const');
   if (member.argsstring) {
-    if (/noexcept$/.test(member.argsstring)) qualifiers.push('noexcept');
-    if (/=\s*delete$/.test(member.argsstring)) qualifiers.push('= delete');
-    if (/=\s*default/.test(member.argsstring)) qualifiers.push('= default');
+    const refQualifierMatch = member.argsstring.match(/\)\s*(?:const\s*)?(?:noexcept(?:\s*\([^)]*\))?\s*)?(&&?)(?=\s*(?:noexcept|override|final|->|requires|=|$))/);
+    if (refQualifierMatch) pushUnique(qualifiers, refQualifierMatch[1]);
+    pushUnique(qualifiers, extractBalancedCall(member.argsstring, 'noexcept'));
+    const trailingReturnMatch = member.argsstring.match(/->\s*(.+?)(?=\s*(?:requires|noexcept|override|final|=|$))/);
+    if (trailingReturnMatch) pushUnique(qualifiers, `-> ${trailingReturnMatch[1].trim()}`);
+    if (/\boverride\b/.test(member.argsstring)) pushUnique(qualifiers, 'override');
+    if (/\bfinal\b/.test(member.argsstring)) pushUnique(qualifiers, 'final');
+    pushUnique(qualifiers, extractRequiresClause(member.argsstring));
+    if (/=\s*delete$/.test(member.argsstring)) pushUnique(qualifiers, '= delete');
+    if (/=\s*default/.test(member.argsstring)) pushUnique(qualifiers, '= default');
   }
+  if (attrs.noexcept === 'yes') pushUnique(qualifiers, 'noexcept');
+  if (memberdef.requiresclause) pushUnique(qualifiers, `requires ${mdField(memberdef, 'requiresclause')}`);
+  if (memberdef.qualifier) {
+    const xmlQualifiers = memberdef.qualifier as unknown[];
+    for (const qualifier of xmlQualifiers) {
+      pushUnique(qualifiers, trim(toMarkdown(qualifier)));
+    }
+  }
+  member.prefixQualifiers = prefixQualifiers;
   member.qualifiers = qualifiers;
 
   // Build legacy proto string (for classic templates)
   let m: string[] = [];
 
   switch (member.kind) {
+    case 'friend':
+      m.push(attrs.prot, ' ');
+      if (member.templateParams.length > 0) {
+        m.push('template<');
+        member.templateParams.forEach((tp, i) => {
+          if (i > 0) m.push(',');
+          m.push(tp.type);
+          if (tp.name) m.push(' ', tp.name);
+          if (tp.defaultValue) m.push(' = ', tp.defaultValue);
+        });
+        m.push('>  \n');
+      }
+      m.push('friend ');
+      if (member.returnType) m.push(member.returnType, ' ');
+      m.push(md.refLink(member.name, member.refid));
+      if (member.argsstring) {
+        m.push('(');
+        member.params.forEach((param, i) => {
+          if (i > 0) m.push(', ');
+          m.push(param.type);
+          if (param.name) m.push(' ', param.name);
+          if (param.defaultValue) m.push(' = ', param.defaultValue);
+        });
+        m.push(')');
+      }
+      for (const q of qualifiers) {
+        m.push(' ', q);
+      }
+      break;
+
     case 'signal':
     case 'slot':
       m.push(`{${member.kind}} `);
@@ -485,8 +663,12 @@ function parseMember(
           if (i > 0) m.push(',');
           m.push(tp.type);
           if (tp.name) m.push(' ', tp.name);
+          if (tp.defaultValue) m.push(' = ', tp.defaultValue);
         });
         m.push('>  \n');
+      }
+      for (const q of prefixQualifiers) {
+        m.push(q, ' ');
       }
       if (member.isInline) m.push('inline', ' ');
       if (member.isStatic) m.push('static', ' ');
@@ -499,6 +681,7 @@ function parseMember(
         if (i > 0) m.push(', ');
         m.push(param.type);
         if (param.name) m.push(' ', param.name);
+        if (param.defaultValue) m.push(' = ', param.defaultValue);
       });
       m.push(')');
       for (const q of qualifiers) {
@@ -525,6 +708,14 @@ function parseMember(
       m.push(`{${member.kind}} `);
       m.push(toMarkdown(memberdef.type), ' ');
       m.push(md.refLink(member.name, member.refid));
+      break;
+
+    case 'typedef':
+      if (/^using\b/.test(member.definition)) {
+        m.push('using ', md.refLink(member.name, member.refid), ' = ', toMarkdown(memberdef.type));
+      } else {
+        m.push('typedef ', toMarkdown(memberdef.type), ' ', md.refLink(member.name, member.refid));
+      }
       break;
 
     case 'enum':
@@ -629,6 +820,7 @@ function extractPageSections(page: Compound, elements: XmlElement[]): void {
         params: [],
         templateParams: [],
         qualifiers: [],
+        prefixQualifiers: [],
         definition: '',
         argsstring: '',
         initializer: '',
@@ -637,6 +829,13 @@ function extractPageSections(page: Compound, elements: XmlElement[]): void {
         isExplicit: false,
         isStatic: false,
         isVirtual: false,
+        isNodiscard: false,
+        isConstexpr: false,
+        isConsteval: false,
+        references: [],
+        referencedBy: [],
+        reimplements: [],
+        reimplementedBy: [],
       };
       page.members.push(member);
       references[member.refid] = member;
@@ -683,6 +882,7 @@ function parseCompound(compound: Compound, compounddef: Record<string, unknown>)
   compound.briefdescription = mdField(compounddef, 'briefdescription');
   compound.detaileddescription = mdField(compounddef, 'detaileddescription');
   compound.summary = mdSummary(compounddef);
+  compound.templateParams = parseTemplateParams(compounddef);
 
   if (compounddef.basecompoundref) {
     for (const ref of compounddef.basecompoundref as Array<Record<string, unknown>>) {
@@ -691,6 +891,7 @@ function parseCompound(compound: Compound, compounddef: Record<string, unknown>)
         prot: refAttrs.prot,
         name: ref._ as string,
         refid: refAttrs.refid,
+        virt: refAttrs.virt,
       });
     }
   }
@@ -702,6 +903,7 @@ function parseCompound(compound: Compound, compounddef: Record<string, unknown>)
         prot: refAttrs.prot,
         name: ref._ as string,
         refid: refAttrs.refid,
+        virt: refAttrs.virt,
       });
     }
   }
@@ -731,9 +933,13 @@ function parseCompound(compound: Compound, compounddef: Record<string, unknown>)
 
   if (compounddef.location) {
     const locations = compounddef.location as Array<Record<string, Record<string, string>>>;
-    const location = locations?.[0]?.$?.file;
+    const locationAttrs = locations?.[0]?.$;
+    const location = locationAttrs?.file;
     if (location) {
       compound.location = location;
+    }
+    if (locationAttrs?.line) {
+      compound.locationLine = locationAttrs.line;
     }
   }
 
