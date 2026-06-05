@@ -60,6 +60,7 @@ export const defaultOptions: MoxygenOptions = {
   htmlAnchors: false,
   language: 'cpp',
   templates: 'templates',
+  titleSeparator: ' - ',
   quiet: false,
   frontmatter: false,
   filters: defaultFilters,
@@ -650,13 +651,13 @@ export async function generate(
         ...meta,
         title: compound.shortname || compound.name,
         module: compound.name,
-        searchEntries: collectSearchEntries(compound, anchorMap),
+        searchEntries: collectSearchEntries(compound, opts.titleSeparator, anchorMap),
         markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap),
       });
     } else {
       pages.push({
         ...meta,
-        searchEntries: collectSearchEntries(compound, anchorMap),
+        searchEntries: collectSearchEntries(compound, opts.titleSeparator, anchorMap),
         markdown: renderCompound(compound, [md], references, opts, anchorMap, slugMap, pagePathMap),
       });
     }
@@ -797,7 +798,7 @@ function buildGroupedNamespacePagePathMap(groups: Compound[]): PagePathMap {
   return map;
 }
 
-function collectSearchEntries(compound: Compound, anchorMap?: AnchorMap): GeneratedSearchEntry[] {
+function collectSearchEntries(compound: Compound, separator: string, anchorMap?: AnchorMap): GeneratedSearchEntry[] {
   const entries: GeneratedSearchEntry[] = [];
   const members = compound.filtered?.members?.length ? compound.filtered.members : compound.members;
   const ownerTitle = qualifiedTitle(compound);
@@ -813,7 +814,7 @@ function collectSearchEntries(compound: Compound, anchorMap?: AnchorMap): Genera
     const summary = stripMarkdownLinks(member.summary || member.briefdescription || '').replace(/\s+/g, ' ').trim();
     entries.push({
       title: `${member.name}`,
-      content: [qualifiedName, ownerTitle, signature, summary].filter(Boolean).join(' — '),
+      content: [qualifiedName, ownerTitle, signature, summary].filter(Boolean).join(separator),
       anchor: anchorMap?.get(member.refid),
       category: searchCategoryForKind(member.kind),
       symbolKind: member.kind,
@@ -830,7 +831,7 @@ function collectSearchEntries(compound: Compound, anchorMap?: AnchorMap): Genera
           title: value.name,
           content: [enumQualifiedName, ownerTitle, member.name, stripMarkdownLinks(value.summary || value.briefdescription || '')]
             .filter(Boolean)
-            .join(' — '),
+            .join(separator),
           anchor: anchorMap?.get(member.refid),
           category: 'Enum Values',
           symbolKind: 'enumvalue',

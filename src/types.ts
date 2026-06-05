@@ -30,6 +30,8 @@ export interface MoxygenOptions {
   htmlAnchors: boolean;
   language: string;
   templates: string;
+  /** Separator joining qualified name, owner, signature and summary in search snippets. */
+  titleSeparator: string;
   sourceRoot?: string;
   sourceUrl?: SourceUrlResolver;
   logfile?: string | boolean;
