@@ -49,7 +49,7 @@ jobs:
           mkdir -p .stage/release
           npm pack --pack-destination .stage/release
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: moxygen-npm-package
           path: .stage/release/moxygen-*.tgz
@@ -61,7 +61,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: moxygen-npm-package
           path: .stage/release
@@ -88,7 +88,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: moxygen-npm-package
           path: .stage/release
