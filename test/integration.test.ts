@@ -70,7 +70,12 @@ describe('integration', () => {
 
   it('outputs expected explicit-group class documentation', async () => {
     const content = read(join(exampleOutputDir, 'api-bicycle.md'));
+    const mountainBikeContent = read(join(exampleOutputDir, 'api-mountainbike.md'));
 
+    expect(content).toContain('# Bycicle module');
+    expect(content).not.toContain('# bicycle');
+    expect(mountainBikeContent).toContain('# Mountain bike module');
+    expect(mountainBikeContent).not.toContain('# mountainbike');
     expect(content).toContain('Bicycle');
     expect(content).toContain('PedalHarder');
     expect(content).toContain('RingBell');
@@ -99,7 +104,7 @@ describe('integration', () => {
 
     const content = read(filepath);
     expect(content.length).toBeGreaterThan(0);
-    expect(content).toContain('# widget');
+    expect(content).toContain('# Widget module');
     expect(content).toContain('Module page for a widget API documented with file-level grouping.');
     expect(content).toContain('### Namespaces');
     expect(content).toContain('documented via file-level grouping only.');
@@ -207,7 +212,7 @@ describe('integration', () => {
     const baseContent = read(join(outputDir, 'base.md'));
     const webrtcContent = read(join(outputDir, 'webrtc.md'));
 
-    expect(baseContent).toContain('# base');
+    expect(baseContent).toContain('# Base module');
     expect(baseContent).toContain('Packet pipeline primitive owned by the base module.');
     expect(baseContent).toContain('[`PacketStream`](#packetstream)');
     expect(baseContent).toContain('## PacketStream');

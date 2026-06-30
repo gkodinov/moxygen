@@ -1,10 +1,12 @@
 {{cleanAnchor refid name}}
 
-# {{shortname name}}
-
 {{#if (eq kind "group")}}
+# {{#if this.shortname}}{{this.shortname}}{{else}}{{shortname name}}{{/if}}
+
 {{summary}}
 {{else}}
+# {{shortname name}}
+
 {{briefdescription}}
 
 {{detaileddescription}}
